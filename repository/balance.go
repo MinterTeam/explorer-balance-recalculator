@@ -22,7 +22,9 @@ func NewBalanceRepository() *Balance {
 	}
 }
 func (r *Balance) SaveAll(balances []*models.Balance) error {
-	err := r.db.Insert(&balances)
+	_, err := r.db.Model(&balances).
+		OnConflict("(address_id, coin_id) DO UPDATE").
+		Insert()
 	return err
 }
 

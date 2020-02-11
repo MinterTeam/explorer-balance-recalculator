@@ -90,7 +90,7 @@ func (rc *ReCalculator) Do() {
 	wgAddresses.Wait()
 	close(ch)
 
-	rc.logger.Info("Saving balances from Node...")
+	rc.logger.Info("Updating balances...")
 	wgBalances := new(sync.WaitGroup)
 	balanceChunkSize := os.Getenv("APP_BALANCES_CHUNK_SIZE")
 	chunkSize, err = strconv.ParseInt(balanceChunkSize, 10, 64)
@@ -117,8 +117,18 @@ func (rc *ReCalculator) Do() {
 	}
 	wgBalances.Wait()
 
+	balancesCount, err := rc.balanceRepository.GetBalancesCount()
+	if err != nil {
+		rc.logger.WithError(err).Fatal("Saving balances")
+	}
+
+	rc.addressRepository.Close()
+	rc.balanceRepository.Close()
+	rc.coinRepository.Close()
+
 	elapsed := time.Since(start)
 	rc.logger.Info("Processing time: ", elapsed)
+	rc.logger.Info(fmt.Sprintf("%d balances have been handled", balancesCount))
 }
 
 func (rc *ReCalculator) GetBalanceFromNode(addresses []*models.Address) ([]*models.Balance, error) {

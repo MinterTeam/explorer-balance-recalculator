@@ -13,6 +13,4 @@ func main() {
 	}
 	rc := recalculator.New()
 	rc.Do()
-
-	//nodeApi := api.NewApi(env.NodeApi)
 }
