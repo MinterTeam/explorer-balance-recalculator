@@ -17,8 +17,9 @@ import (
 type ReCalculator struct {
 	client            *api.Api
 	addressRepository *repository.Address
-	coinRepository    *repository.Coin
 	balanceRepository *repository.Balance
+	blockRepository   *repository.Block
+	coinRepository    *repository.Coin
 	logger            *logrus.Entry
 }
 
@@ -39,8 +40,9 @@ func New() *ReCalculator {
 	return &ReCalculator{
 		client:            api.NewApi(os.Getenv("NODE_API")),
 		addressRepository: repository.NewAddressRepository(),
-		coinRepository:    repository.NewCoinRepository(),
 		balanceRepository: repository.NewBalanceRepository(),
+		blockRepository:   repository.NewBlockRepository(),
+		coinRepository:    repository.NewCoinRepository(),
 		logger:            contextLogger,
 	}
 }
@@ -124,6 +126,7 @@ func (rc *ReCalculator) Do() {
 
 	rc.addressRepository.Close()
 	rc.balanceRepository.Close()
+	rc.blockRepository.Close()
 	rc.coinRepository.Close()
 
 	elapsed := time.Since(start)
@@ -140,12 +143,12 @@ func (rc *ReCalculator) GetBalanceFromNode(addresses []*models.Address) ([]*mode
 		list[i] = a
 	}
 
-	currentBlock, err := strconv.ParseInt(os.Getenv("CURRENT_BLOCK"), 10, 64)
+	currentBlock, err := rc.blockRepository.GetLastBlockId()
 	if err != nil {
 		return nil, err
 	}
 
-	balancesFromNode, err := rc.client.Addresses(list, int(currentBlock))
+	balancesFromNode, err := rc.client.Addresses(list, currentBlock)
 	if err != nil {
 		return nil, err
 	}
