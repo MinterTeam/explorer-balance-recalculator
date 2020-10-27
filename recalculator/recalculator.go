@@ -3,9 +3,9 @@ package recalculator
 import (
 	"fmt"
 	"github.com/MinterTeam/explorer-balance-recalculator/repository"
+	"github.com/MinterTeam/minter-explorer-extender/v2/models"
 	"github.com/MinterTeam/minter-explorer-tools/v4/helpers"
-	"github.com/MinterTeam/minter-explorer-tools/v4/models"
-	"github.com/MinterTeam/minter-go-sdk/api"
+	"github.com/MinterTeam/minter-go-sdk/v2/api/grpc_client"
 	"github.com/sirupsen/logrus"
 	"math"
 	"os"
@@ -15,7 +15,7 @@ import (
 )
 
 type ReCalculator struct {
-	client            *api.Api
+	client            *grpc_client.Client
 	addressRepository *repository.Address
 	balanceRepository *repository.Balance
 	blockRepository   *repository.Block
@@ -33,12 +33,17 @@ func New() *ReCalculator {
 		FullTimestamp: true,
 	})
 	contextLogger := logger.WithFields(logrus.Fields{
-		"version": "1.0",
+		"version": "1.2",
 		"app":     "Minter Explorer Balance Re-Calculator",
 	})
 
+	nodeApi, err := grpc_client.New(os.Getenv("NODE_API"))
+	if err != nil {
+		panic(err)
+	}
+
 	return &ReCalculator{
-		client:            api.NewApi(os.Getenv("NODE_API")),
+		client:            nodeApi,
 		addressRepository: repository.NewAddressRepository(),
 		balanceRepository: repository.NewBalanceRepository(),
 		blockRepository:   repository.NewBlockRepository(),
@@ -139,37 +144,25 @@ func (rc *ReCalculator) GetBalanceFromNode(addresses []*models.Address) ([]*mode
 	list := make([]string, len(addresses))
 
 	for i, address := range addresses {
-		a := fmt.Sprintf("\"Mx%s\"", address.Address)
+		a := fmt.Sprintf("Mx%s", address.Address)
 		list[i] = a
 	}
 
-	currentBlock, err := rc.blockRepository.GetLastBlockId()
+	balancesFromNode, err := rc.client.Addresses(list)
 	if err != nil {
 		return nil, err
 	}
 
-	balancesFromNode, err := rc.client.Addresses(list, currentBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, bfn := range balancesFromNode {
-		addressId, err := rc.addressRepository.FindId(helpers.RemovePrefix(bfn.Address))
+	for adr, bfn := range balancesFromNode.Addresses {
+		addressId, err := rc.addressRepository.FindId(helpers.RemovePrefix(adr))
 		if err != nil {
 			return nil, err
 		}
-		for coin, value := range bfn.Balance {
-			if value == "0" && coin != os.Getenv("APP_BASE_COIN") {
-				continue
-			}
-			coinId, err := rc.coinRepository.FindIdBySymbol(coin)
-			if err != nil {
-				return nil, err
-			}
+		for _, b := range bfn.Balance {
 			balance := new(models.Balance)
-			balance.AddressID = addressId
-			balance.CoinID = coinId
-			balance.Value = value
+			balance.AddressID = uint(addressId)
+			balance.CoinID = uint(b.Coin.Id)
+			balance.Value = b.Value
 			balances = append(balances, balance)
 		}
 	}

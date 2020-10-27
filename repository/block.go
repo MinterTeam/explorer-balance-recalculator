@@ -2,8 +2,8 @@ package repository
 
 import (
 	"fmt"
-	"github.com/MinterTeam/minter-explorer-tools/v4/models"
-	"github.com/go-pg/pg/v9"
+	"github.com/MinterTeam/minter-explorer-extender/v2/models"
+	"github.com/go-pg/pg/v10"
 	"os"
 )
 

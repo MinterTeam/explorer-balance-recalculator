@@ -3,7 +3,7 @@ package repository
 import (
 	"fmt"
 	"github.com/MinterTeam/minter-explorer-tools/v4/models"
-	"github.com/go-pg/pg/v9"
+	"github.com/go-pg/pg/v10"
 	"os"
 	"sync"
 )
@@ -28,7 +28,7 @@ func NewCoinRepository() *Coin {
 }
 
 func (r *Coin) SaveAll(coins []*models.Coin) error {
-	err := r.db.Insert(&coins)
+	_, err := r.db.Model(&coins).Insert()
 	for _, coin := range coins {
 		r.cache.Store(coin.Symbol, coin.ID)
 		r.invCache.Store(coin.ID, coin.Symbol)
